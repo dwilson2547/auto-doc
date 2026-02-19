@@ -3,6 +3,7 @@
 A comprehensive guide to the common mathematical representations used to describe orientation and position in three dimensions, including a thorough explanation of why the **order of operations** is critical when composing rotations.
 
 ## Table of Contents
+- [Coordinate System Handedness](#coordinate-system-handedness)
 - [Euler Angles](#euler-angles)
 - [Quaternions](#quaternions)
 - [Homogeneous Transformation Matrices](#homogeneous-transformation-matrices)
@@ -12,6 +13,109 @@ A comprehensive guide to the common mathematical representations used to describ
 - [Why Order of Operations Matters](#why-order-of-operations-matters)
 - [Choosing a Representation](#choosing-a-representation)
 - [Quick Reference Summary](#quick-reference-summary)
+
+---
+
+## Coordinate System Handedness
+
+Before working with any rotation or translation representation, it is essential to know which **handedness** the coordinate system uses. Mixing conventions without accounting for handedness is a very common source of bugs.
+
+### Right-Handed Coordinate System
+
+In a right-handed coordinate system, the axes satisfy:
+
+```
+X × Y = Z
+```
+
+You can verify this with the **right-hand rule**: point your right hand's fingers along the +X axis, curl them toward +Y, and your thumb points in the +Z direction.
+
+```
+         +Z
+          |
+          |
+          +-------> +Y
+         /
+        /
+      +X
+```
+
+Common right-handed conventions:
+- **OpenGL**, **Vulkan** (world space), **ROS** (Robot Operating System): +X forward or right, +Y left or up, +Z up or out-of-screen
+- **Aerospace (NED)**: +X North, +Y East, +Z Down
+- **Mathematics / Physics**: standard Cartesian axes
+
+### Left-Handed Coordinate System
+
+In a left-handed coordinate system:
+
+```
+X × Y = -Z   (the Z axis points the opposite direction compared to right-handed)
+```
+
+You can verify with the **left-hand rule**: point your left hand's fingers along +X, curl toward +Y, and your thumb points in the +Z direction.
+
+```
+         +Z (into screen)
+          |
+          |
+          +-------> +X
+         /
+        /
+      +Y
+```
+
+Common left-handed conventions:
+- **DirectX**, **Unity 3D**: +X right, +Y up, +Z forward (into the screen)
+- **Unreal Engine** (default): +X forward, +Y right, +Z up (also left-handed in some contexts)
+
+### Positive Rotation Direction
+
+Handedness also determines which direction is a **positive rotation** about an axis:
+
+- **Right-handed system**: positive rotation follows the **right-hand rule** — curl the right hand's fingers in the direction of positive rotation; the thumb points along the positive axis. A 90° positive rotation about +Z rotates +X toward +Y.
+- **Left-handed system**: positive rotation follows the **left-hand rule** — the same angle produces the opposite spin direction compared to a right-handed system.
+
+```
+Right-handed +Z rotation:       Left-handed +Z rotation:
+  +Y                              +Y
+   ^                               ^
+   |  ↺ positive                   |  ↻ positive
+   +-----> +X                      +-----> +X
+```
+
+### Why This Matters in Practice
+
+| Situation | Impact |
+|-----------|--------|
+| Passing rotation matrices between OpenGL and DirectX | Row/column order AND handedness differ |
+| Importing 3D assets between Unity and Blender | Axis mapping and rotation sign must both be converted |
+| Combining quaternions from different SDKs | A quaternion from a right-handed SDK represents a mirrored rotation in a left-handed SDK |
+| Cross-platform robotics software | ROS (right-handed) vs. some game engines (left-handed) |
+
+### Converting Between Handedness
+
+To convert a right-handed coordinate system to a left-handed one (or vice versa), negate one axis. For example, to convert from right-handed (ROS/OpenGL-style) to Unity's left-handed system, negate the Z axis:
+
+```
+p_LH = (px, py, -pz)
+```
+
+For rotation matrices, converting handedness is equivalent to a **reflection**, which changes the sign of the determinant from +1 to -1. A rotation matrix in one handedness cannot be directly used in the other without a basis change transformation:
+
+```
+R_LH = M · R_RH · M⁻¹
+
+where M is the axis-negation matrix, e.g. diag(1, 1, -1) to negate Z
+```
+
+For quaternions, negating the axis component that corresponds to the flipped axis achieves the same effect:
+
+```
+q_RH = (w, x, y, z)  →  q_LH = (w, x, y, -z)   [when negating Z]
+```
+
+> **Best practice**: always document the handedness of your coordinate system alongside any rotation data. Never assume handedness — always confirm it from the source library or hardware documentation.
 
 ---
 
